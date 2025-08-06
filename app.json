@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "d2198a15-af3e-446e-a04d-a88b579700e0"
+      }
+    },
+    "android": {
+      "package": "com.rakeshraj_25.frontenduptoend"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
