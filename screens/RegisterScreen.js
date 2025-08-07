@@ -12,7 +12,7 @@ import { Picker } from '@react-native-picker/picker';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api'; // Make sure this points to your backend base URL
+import api from '../services/api';
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
@@ -27,6 +27,7 @@ const RegisterScreen = () => {
   const [floorNumber, setFloorNumber] = useState('');
   const [flatNumber, setFlatNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('resident');
 
   useEffect(() => {
@@ -47,8 +48,13 @@ const RegisterScreen = () => {
   }, [route.params?.email]);
 
   const onSubmit = async () => {
-    if (!name || !email || !phone || !password) {
+    if (!name || !email || !phone || !password || !confirmPassword) {
       Alert.alert('Validation', 'Please fill all the required fields.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Validation', 'Passwords do not match.');
       return;
     }
 
@@ -161,13 +167,14 @@ const RegisterScreen = () => {
           onChangeText={setPassword}
           value={password}
         />
+
         <Text style={styles.label}>Confirm Password</Text>
         <TextInput
           placeholder="Please Re-enter password"
           secureTextEntry
           style={styles.input}
-          onChangeText={setPassword}
-          value={password}
+          onChangeText={setConfirmPassword}
+          value={confirmPassword}
         />
 
         <TouchableOpacity
@@ -181,6 +188,7 @@ const RegisterScreen = () => {
               floorNumber,
               flatNumber,
               password,
+              confirmPassword,  // ✅ Add this line
               role,
             })
           }

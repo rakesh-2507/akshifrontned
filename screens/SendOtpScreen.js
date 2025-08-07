@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator, Text, Alert, StyleSheet } from 'react-native';
-import api from '../services/api'; // axios instance
+import api from '../services/api'; // your axios instance
 
 export default function SendOtpScreen({ navigation, route }) {
   const {
@@ -11,6 +11,7 @@ export default function SendOtpScreen({ navigation, route }) {
     floorNumber,
     flatNumber,
     password,
+    confirmPassword,
     role,
   } = route.params;
 
@@ -22,13 +23,20 @@ export default function SendOtpScreen({ navigation, route }) {
       return;
     }
 
+    if (!password || password !== confirmPassword) {
+      Alert.alert('Validation Error', 'Passwords do not match.');
+      return;
+    }
+
     setLoading(true);
     try {
       console.log('📤 Sending OTP to:', { email, phone });
       const response = await api.post('/auth/send-otp', { email, phone });
 
       console.log('✅ OTP sent response:', response.data);
-      Alert.alert('OTP Sent', `OTP has been sent to ${email} and +91${phone}`);
+      const maskedPhone = phone.replace(/(\d{2})\d{6}(\d{2})/, '$1******$2');
+
+      Alert.alert('OTP Sent', `OTP has been sent to ${email} and +91-${maskedPhone}`);
 
       navigation.navigate('VerifyOtp', {
         name,
@@ -46,7 +54,7 @@ export default function SendOtpScreen({ navigation, route }) {
         error?.response?.data?.error ||
         error?.response?.data?.message ||
         error.message ||
-        'Something went wrong while sending OTP';
+        'Something went wrong while sending OTP.';
       Alert.alert('Failed to Send OTP', msg);
     } finally {
       setLoading(false);
@@ -54,7 +62,15 @@ export default function SendOtpScreen({ navigation, route }) {
   };
 
   useEffect(() => {
-    sendOtp();
+    Alert.alert(
+      'Confirm',
+      `Send OTP to ${email} and +91-${phone}?`,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => navigation.goBack() },
+        { text: 'Send OTP', onPress: sendOtp },
+      ],
+      { cancelable: false }
+    );
   }, []);
 
   return (
