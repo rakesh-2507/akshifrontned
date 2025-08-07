@@ -158,8 +158,8 @@ const ProfileDrawer = ({ visible, onClose, slideAnim }) => {
                             { label: 'Privacy Policy', icon: 'lock-closed-outline', onPress: () => navigation.navigate('Privacy') },
                         ].map((item) => (
                             <TouchableOpacity key={item.label} style={styles.rowItem} onPress={() => { onClose(); item.onPress(); }}>
-                                <Ionicons name={item.icon} size={20} color="#444" style={{ marginRight: 8 }} />
-                                <Text style={styles.rowText}>{item.label}</Text>
+                                <Ionicons name={item.icon} size={20} color="#444" style={styles.rowIcon} />
+                                <Text style={styles.rowText} numberOfLines={2} >{item.label}</Text>
                             </TouchableOpacity>
                         ))}
                         <TouchableOpacity style={[styles.rowItem, { marginTop: 12 }]} onPress={() => { onClose(); logout(); }}>
@@ -350,10 +350,20 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 12,
+        paddingRight: 12,
     },
+
+    rowIcon: {
+        marginRight: 8,
+        width: 24, // ensure fixed icon width
+        textAlign: 'center',
+    },
+
     rowText: {
         fontSize: 15,
         color: '#333',
+        flexShrink: 1, // allows text to shrink to avoid overflow
+        flex: 1,       // makes it take remaining space
     },
     footerText: {
         textAlign: 'center',

@@ -10,6 +10,12 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "ios": {
+      "bundleIdentifier": "com.rakesh.akshi",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
   }
 }

@@ -68,7 +68,7 @@ const AppNavigator = () => {
             <>
               <Stack.Screen name="ResidentTabs" component={ResidentTabs} />
               <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
-              <Stack.Screen name="Household" component={HouseholdScreen} />
+              <Stack.Screen name="Household" component={HouseholdScreen} options={{ headerShown: true }} />
             </>
           ) : (
             <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />

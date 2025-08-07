@@ -1,8 +1,13 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, ActivityIndicator, Modal,
 } from 'react-native';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { Feather, MaterialIcons, AntDesign } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation, useRoute } from '@react-navigation/native';
+
 import { AuthContext } from '../context/AuthContext';
 import {
   fetchProfileData,
@@ -10,7 +15,7 @@ import {
   addDailyHelp,
   addVehicle,
   addPet,
-  addUser, // You must implement this in your profileService.js
+  addUser,
 } from '../services/profileService';
 
 const Section = ({ title, data, onAddPress, renderItem }) => (
@@ -28,14 +33,37 @@ const Section = ({ title, data, onAddPress, renderItem }) => (
 );
 
 const HouseholdScreen = () => {
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext);
   const [profileData, setProfileData] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState('');
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(true);
-  const [activeTab, setActiveTab] = useState('AddMember'); // 'AddUser' or 'AddMember'
+  const [activeTab, setActiveTab] = useState('AddMember');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerStyle: { backgroundColor: '#4e48d9' },
+      headerTintColor: '#fff',
+      headerTitleAlign: 'left',
+      headerTitle: () => (
+        <View>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#fff' }}>{route.name}</Text>
+          <Text style={{ fontSize: 12, color: '#e2e2e2' }}>{user?.apartmentName || 'Your Apartment'}</Text>
+        </View>
+      ),
+      headerLeft: () => (
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 10 }}>
+          <AntDesign name="menu-unfold" size={24} color="#fff" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, route, user]);
 
   useEffect(() => {
     fetchAll();
@@ -47,13 +75,30 @@ const HouseholdScreen = () => {
       const data = await fetchProfileData(token);
       setProfileData(data);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch profile:', err);
     } finally {
       setRefreshing(false);
     }
   };
 
-  const handleChange = (key, val) => setFormData((prev) => ({ ...prev, [key]: val }));
+  const handleChange = (key, val) => {
+    setFormData(prev => ({ ...prev, [key]: val }));
+  };
+
+  const openModal = (type) => {
+    setModalType(type);
+    setModalVisible(true);
+    setFormData({});
+
+    if (type === 'Family' && activeTab === 'AddUser') {
+      setFormData(prev => ({
+        ...prev,
+        apartmentname: profileData?.apartment?.apartmentname || '',
+        floor_number: profileData?.apartment?.floor_number || '',
+        flat_number: profileData?.apartment?.flat_number || '',
+      }));
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -61,7 +106,7 @@ const HouseholdScreen = () => {
 
       if (modalType === 'Family') {
         if (activeTab === 'AddUser') {
-          await addUser(formData, token); // Implement this in backend + service
+          await addUser(formData, token);
         } else {
           await addFamily(formData, token);
         }
@@ -84,6 +129,46 @@ const HouseholdScreen = () => {
     }
   };
 
+  const renderFormInputs = () => {
+    switch (modalType) {
+      case 'Daily Help':
+        return (
+          <>
+            <Text style={styles.label}>Service</Text>
+            <TextInput style={styles.input} placeholder="Service" onChangeText={(t) => handleChange('service', t)} />
+          </>
+        );
+      case 'Vehicles':
+        return (
+          <>
+            <Text style={styles.label}>Type (e.g. Car, Bike)</Text>
+            <TextInput style={styles.input} placeholder="Type" onChangeText={(t) => handleChange('type', t)} />
+
+            <Text style={styles.label}>Number</Text>
+            <TextInput style={styles.input} placeholder="Number" onChangeText={(t) => handleChange('number', t)} />
+
+            <Text style={styles.label}>RC Number</Text>
+            <TextInput style={styles.input} placeholder="RC Number" onChangeText={(t) => handleChange('rc', t)} />
+
+            <Text style={styles.label}>License Number</Text>
+            <TextInput style={styles.input} placeholder="License Number" onChangeText={(t) => handleChange('license', t)} />
+          </>
+        );
+      case 'Pets':
+        return (
+          <>
+            <Text style={styles.label}>Type (e.g. Dog, Cat)</Text>
+            <TextInput style={styles.input} placeholder="Type" onChangeText={(t) => handleChange('type', t)} />
+
+            <Text style={styles.label}>Count</Text>
+            <TextInput style={styles.input} placeholder="Count" keyboardType="numeric" onChangeText={(t) => handleChange('count', t)} />
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView>
@@ -91,45 +176,48 @@ const HouseholdScreen = () => {
           title="Family"
           data={profileData.family || []}
           onAddPress={() => {
-            setModalType('Family');
             setActiveTab('AddMember');
-            setModalVisible(true);
+            openModal('Family');
           }}
           renderItem={(item, index) => (
-            <View key={index} style={styles.card}>
+            <View key={item.id || index} style={styles.card}>
               <Text style={styles.cardTitle}>{item.name}</Text>
               <Text style={styles.cardText}>DOB: {item.dob}</Text>
               <Text style={styles.cardText}>Gender: {item.gender}</Text>
             </View>
           )}
         />
+
         <Section
           title="Daily Help"
-          data={profileData.dailyHelps || []}
-          onAddPress={() => { setModalType('Daily Help'); setModalVisible(true); }}
+          data={profileData.dailyHelp || []}
+          onAddPress={() => openModal('Daily Help')}
           renderItem={(item, index) => (
-            <View key={index} style={styles.card}>
+            <View key={item.id || index} style={styles.card}>
               <Text style={styles.cardTitle}>{item.service}</Text>
             </View>
           )}
         />
+
         <Section
           title="Vehicles"
           data={profileData.vehicles || []}
-          onAddPress={() => { setModalType('Vehicles'); setModalVisible(true); }}
+          onAddPress={() => openModal('Vehicles')}
           renderItem={(item, index) => (
-            <View key={index} style={styles.card}>
+            <View key={item.id || index} style={styles.card}>
               <Text style={styles.cardTitle}>{item.type} - {item.number}</Text>
               <Text style={styles.cardText}>RC: {item.rc}</Text>
+              <Text style={styles.cardText}>License: {item.license}</Text>
             </View>
           )}
         />
+
         <Section
           title="Pets"
           data={profileData.pets || []}
-          onAddPress={() => { setModalType('Pets'); setModalVisible(true); }}
+          onAddPress={() => openModal('Pets')}
           renderItem={(item, index) => (
-            <View key={index} style={styles.card}>
+            <View key={item.id || index} style={styles.card}>
               <Text style={styles.cardTitle}>{item.type}</Text>
               <Text style={styles.cardText}>Count: {item.count}</Text>
             </View>
@@ -137,64 +225,130 @@ const HouseholdScreen = () => {
         />
       </ScrollView>
 
-      {/* Fullscreen Modal for Family */}
-      {modalVisible && modalType === 'Family' && (
-        <Modal animationType="slide" transparent={false} visible={modalVisible}>
-          <View style={styles.fullscreenModal}>
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <MaterialIcons name="close" size={24} color="#444" />
-              </TouchableOpacity>
-              <Text style={styles.modalHeaderText}>Add Family</Text>
-            </View>
+      <Modal animationType="slide" transparent={false} visible={modalVisible}>
+        <View style={styles.fullscreenModal}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <MaterialIcons name="close" size={24} color="#444" />
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderText}>Add {modalType}</Text>
+          </View>
 
-            {/* Tabs */}
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tabButton, activeTab === 'AddUser' && styles.tabActive]}
-                onPress={() => setActiveTab('AddUser')}
-              >
-                <Text style={styles.tabText}>Add New User</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tabButton, activeTab === 'AddMember' && styles.tabActive]}
-                onPress={() => setActiveTab('AddMember')}
-              >
-                <Text style={styles.tabText}>Add Family Member</Text>
-              </TouchableOpacity>
-            </View>
+          {modalType === 'Family' ? (
+            <>
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[styles.tabButton, activeTab === 'AddUser' && styles.tabActive]}
+                  onPress={() => {
+                    setActiveTab('AddUser');
+                    setFormData({
+                      apartmentname: profileData?.apartment?.apartmentname || '',
+                      floor_number: profileData?.apartment?.floor_number || '',
+                      flat_number: profileData?.apartment?.flat_number || '',
+                    });
+                  }}
+                >
+                  <Text style={styles.tabText}>Add New User</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tabButton, activeTab === 'AddMember' && styles.tabActive]}
+                  onPress={() => {
+                    setActiveTab('AddMember');
+                    setFormData({});
+                  }}
+                >
+                  <Text style={styles.tabText}>Add Family Member</Text>
+                </TouchableOpacity>
+              </View>
 
+              <ScrollView style={{ padding: 20 }}>
+                {activeTab === 'AddUser' ? (
+                  <>
+                    <Text style={styles.label}>Full Name</Text>
+                    <TextInput style={styles.input} placeholder="Full Name" onChangeText={(t) => handleChange('name', t)} />
+
+                    <Text style={styles.label}>Email</Text>
+                    <TextInput style={styles.input} keyboardType="email-address" placeholder="Email" onChangeText={(t) => handleChange('email', t)} />
+
+                    <Text style={styles.label}>Phone Number</Text>
+                    <TextInput style={styles.input} keyboardType="phone-pad" placeholder="Phone Number" onChangeText={(t) => handleChange('phone', t)} />
+
+                    <Text style={styles.label}>Apartment Name</Text>
+                    <TextInput style={styles.input} placeholder="Apartment Name" value={formData.apartmentname} onChangeText={(t) => handleChange('apartmentname', t)} />
+
+                    <Text style={styles.label}>Block Number</Text>
+                    <TextInput style={styles.input} placeholder="Block Number" value={formData.floor_number} onChangeText={(t) => handleChange('floor_number', t)} />
+
+                    <Text style={styles.label}>Flat Number</Text>
+                    <TextInput style={styles.input} placeholder="Flat Number" value={formData.flat_number} onChangeText={(t) => handleChange('flat_number', t)} />
+
+                    <Text style={styles.label}>Password</Text>
+                    <TextInput style={styles.input} placeholder="Password" secureTextEntry onChangeText={(t) => handleChange('password', t)} />
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.label}>Full Name</Text>
+                    <TextInput style={styles.input} placeholder="Full Name" onChangeText={(t) => handleChange('name', t)} />
+
+                    <Text style={styles.label}>Date of Birth</Text>
+                    <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+                      <Text style={{ color: formData.dob ? '#000' : '#aaa' }}>
+                        {formData.dob || 'Select Date of Birth'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={formData.dob ? new Date(formData.dob) : new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={(event, selectedDate) => {
+                          setShowDatePicker(false);
+                          if (selectedDate) {
+                            const formatted = selectedDate.toISOString().split('T')[0];
+                            handleChange('dob', formatted);
+                          }
+                        }}
+                      />
+                    )}
+
+                    <Text style={styles.label}>Gender</Text>
+                    <View style={styles.input}>
+                      <Picker
+                        selectedValue={formData.gender || ''}
+                        onValueChange={(value) => handleChange('gender', value)}
+                        style={{ height: 20 }}
+                      >
+                        <Picker.Item label="Select Gender" value="" />
+                        <Picker.Item label="Male" value="Male" />
+                        <Picker.Item label="Female" value="Female" />
+                        <Picker.Item label="Other" value="Other" />
+                      </Picker>
+                    </View>
+
+                    <Text style={styles.label}>Mobile</Text>
+                    <TextInput style={styles.input} keyboardType="phone-pad" placeholder="Mobile" onChangeText={(t) => handleChange('mobile', t)} />
+
+                    <Text style={styles.label}>Email</Text>
+                    <TextInput style={styles.input} keyboardType="email-address" placeholder="Email" onChangeText={(t) => handleChange('email', t)} />
+                  </>
+                )}
+
+                <TouchableOpacity onPress={handleSubmit} style={styles.submitBtn} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit</Text>}
+                </TouchableOpacity>
+              </ScrollView>
+            </>
+          ) : (
             <ScrollView style={{ padding: 20 }}>
-              {activeTab === 'AddUser' && (
-                <>
-                  <TextInput placeholder="Full Name" style={styles.input} onChangeText={(t) => handleChange('name', t)} />
-                  <TextInput placeholder="Email" style={styles.input} keyboardType="email-address" onChangeText={(t) => handleChange('email', t)} />
-                  <TextInput placeholder="Phone Number" style={styles.input} keyboardType="phone-pad" onChangeText={(t) => handleChange('phone', t)} />
-                  <TextInput placeholder="Apartment Name" style={styles.input} onChangeText={(t) => handleChange('apartmentname', t)} />
-                  <TextInput placeholder="Block Number" style={styles.input} onChangeText={(t) => handleChange('floor_number', t)} />
-                  <TextInput placeholder="Flat Number" style={styles.input} onChangeText={(t) => handleChange('flat_number', t)} />
-                  <TextInput placeholder="Password" secureTextEntry style={styles.input} onChangeText={(t) => handleChange('password', t)} />
-                </>
-              )}
-
-              {activeTab === 'AddMember' && (
-                <>
-                  <TextInput placeholder="Full Name" style={styles.input} onChangeText={(t) => handleChange('name', t)} />
-                  <TextInput placeholder="Date of Birth" style={styles.input} onChangeText={(t) => handleChange('dob', t)} />
-                  <TextInput placeholder="Gender" style={styles.input} onChangeText={(t) => handleChange('gender', t)} />
-                  <TextInput placeholder="Mobile" keyboardType="phone-pad" style={styles.input} onChangeText={(t) => handleChange('mobile', t)} />
-                  <TextInput placeholder="Email" keyboardType="email-address" style={styles.input} onChangeText={(t) => handleChange('email', t)} />
-                </>
-              )}
-
+              {renderFormInputs()}
               <TouchableOpacity onPress={handleSubmit} style={styles.submitBtn} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit</Text>}
               </TouchableOpacity>
             </ScrollView>
-          </View>
-        </Modal>
-      )}
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -220,14 +374,12 @@ const styles = StyleSheet.create({
   card: { marginBottom: 10 },
   cardTitle: { fontWeight: 'bold' },
   cardText: { color: '#555' },
-
   fullscreenModal: { flex: 1, backgroundColor: '#fff' },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center',
     padding: 15, borderBottomWidth: 1, borderColor: '#eee'
   },
   modalHeaderText: { fontSize: 18, fontWeight: 'bold', marginLeft: 10 },
-
   tabContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -246,7 +398,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderColor: '#6C63FF',
   },
-
   input: {
     borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 10,
@@ -263,4 +414,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  label: {
+    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+  },
+
 });

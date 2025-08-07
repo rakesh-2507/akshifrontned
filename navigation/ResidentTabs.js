@@ -78,6 +78,7 @@ const HomeStack = () => {
       <Stack.Screen name="Event Gallery" component={EventGalleryScreen} />
       <Stack.Screen name="Market Place" component={MarketplaceScreen} />
       <Stack.Screen name="Community Updates" component={NotificationsScreen} />
+      
     </Stack.Navigator>
   );
 };
